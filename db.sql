@@ -75,6 +75,7 @@ CREATE TABLE wanted_genres(
 
 /* UPDATE TRIGGERS */
 
+/* UPDATED AT*/
 CREATE FUNCTION updated_at_stamp() RETURNS trigger as $updated_at_stamp$
     BEGIN
         NEW.updated_at := CURRENT_TIMESTAMP;
@@ -82,11 +83,28 @@ CREATE FUNCTION updated_at_stamp() RETURNS trigger as $updated_at_stamp$
     END
 $updated_at_stamp$ LANGUAGE plpgsql;
 
+/* name_normalized changed on update*/
+
+CREATE FUNCTION name_normalized_update() returns trigger as $update_name_normalized$
+    BEGIN
+        NEW.name_normalized := UPPER(NEW.name);
+        RETURN NEW;
+    END
+$update_name_normalized$ LANGUAGE plpgsql;
+
 CREATE TRIGGER updated_at BEFORE UPDATE ON users FOR EACH ROW EXECUTE PROCEDURE updated_at_stamp();
 CREATE TRIGGER updated_at BEFORE UPDATE ON cities FOR EACH ROW EXECUTE PROCEDURE updated_at_stamp();
+CREATE TRIGGER updated_at BEFORE UPDATE ON wanteds FOR EACH ROW EXECUTE PROCEDURE updated_at_stamp();
 CREATE TRIGGER updated_at BEFORE UPDATE ON instruments FOR EACH ROW EXECUTE PROCEDURE updated_at_stamp();
 CREATE TRIGGER updated_at BEFORE UPDATE ON genres FOR EACH ROW EXECUTE PROCEDURE updated_at_stamp();
-CREATE TRIGGER updated_at BEFORE UPDATE ON wanteds FOR EACH ROW EXECUTE PROCEDURE updated_at_stamp();
+
+CREATE TRIGGER name_normalized_update BEFORE UPDATE ON cities FOR EACH ROW WHEN (NEW.name IS DISTINCT FROM OLD.name) EXECUTE PROCEDURE name_normalized_update();
+CREATE TRIGGER name_normalized_insert BEFORE INSERT ON cities FOR EACH ROW EXECUTE PROCEDURE name_normalized_update();
+CREATE TRIGGER name_normalized_update BEFORE UPDATE ON instruments FOR EACH ROW WHEN (NEW.name IS DISTINCT FROM OLD.name) EXECUTE PROCEDURE name_normalized_update();
+CREATE TRIGGER name_normalized_insert BEFORE INSERT ON instruments FOR EACH ROW EXECUTE PROCEDURE name_normalized_update();
+CREATE TRIGGER name_normalized_update BEFORE UPDATE ON genres FOR EACH ROW WHEN (NEW.name IS DISTINCT FROM OLD.name) EXECUTE PROCEDURE name_normalized_update();
+CREATE TRIGGER name_normalized_insert BEFORE INSERT ON genres FOR EACH ROW EXECUTE PROCEDURE name_normalized_update();
+
 
 /* INSERT BASIC VAUES */
 
