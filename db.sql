@@ -17,6 +17,7 @@ CREATE TABLE users(
     created_at TIMESTAMP with time zone default CURRENT_TIMESTAMP,
     updated_at TIMESTAMP with time zone default CURRENT_TIMESTAMP,
     username VARCHAR(50) UNIQUE NOT NULL,
+    username_normalized VARCHAR(50) NOT NULL,
     firstname VARCHAR(50) NOT NULL,
     lastname VARCHAR(50) NOT NULL,
     email VARCHAR(50) UNIQUE NOT NULL,
@@ -76,7 +77,9 @@ CREATE TABLE wanted_genres(
 /* UPDATE TRIGGERS */
 
 /* UPDATED AT*/
-CREATE FUNCTION updated_at_stamp() RETURNS trigger as $updated_at_stamp$
+CREATE FUNCTION updated_at_stamp() 
+RETURNS trigger 
+AS $updated_at_stamp$
     BEGIN
         NEW.updated_at := CURRENT_TIMESTAMP;
         RETURN NEW;
@@ -85,7 +88,9 @@ $updated_at_stamp$ LANGUAGE plpgsql;
 
 /* name_normalized changed on update*/
 
-CREATE FUNCTION name_normalized_update() returns trigger as $update_name_normalized$
+CREATE FUNCTION name_normalized_update() 
+RETURNS trigger 
+AS $update_name_normalized$
     BEGIN
         NEW.name_normalized := UPPER(NEW.name);
         RETURN NEW;
@@ -113,6 +118,7 @@ INSERT INTO roles(name) VALUES ('Standard'), ('Moderator'), ('Admin');
 
 /* STORED PROCEDURES */
 
+/* These are mainly for all the tables with a name field -- can be used also for other tables */
 /* GET */
 CREATE FUNCTION get_by_id 
 (
@@ -161,33 +167,123 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE FUNCTION insert_city
+CREATE FUNCTION insert_entity_with_name
 (
+    tbl regclass,
     name VARCHAR(50)
 )
 RETURNS BOOLEAN
 AS $$
 BEGIN
-    INSERT INTO cities(name)
-    VALUES($1) 
+    EXECUTE
+    format
+    (
+        '
+        INSERT INTO %1$s(name)
+        VALUES(%2$L);
+        ', tbl, name
+    );
     RETURN 't';
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE FUNCTION delete_city
+CREATE FUNCTION update_entity_with_name
 (
+    tbl regclass,
+    name VARCHAR(50),
+    id INTEGER
+)
+RETURNS BOOLEAN
+AS $$
+BEGIN
+    EXECUTE
+    format
+    (
+        '
+        UPDATE %1$s
+        SET name = %2$L
+        WHERE id = %3$s;
+        ', tbl, name, id
+    );
+    return 't';
+end;
+$$ LANGUAGE plpgsql;
+
+CREATE FUNCTION delete_entity
+(
+    tbl regclass,
     id INTEGER
 )
 RETURNS BOOLEAN
 AS $$
 DECLARE 
 BEGIN
-    DELETE FROM cities
-    WHERE id = $1 
-    INTO result;
+    EXECUTE
+    format 
+    (
+        '
+        DELETE FROM %1$s
+        WHERE id = %2$s;
+        ', tbl, id
+    );
     RETURN 't';
 END;
 $$ LANGUAGE plpgsql;
+
+/* User operations*/
+CREATE FUNCTION create_user
+(
+    username VARCHAR(50),
+    firstname VARCHAR(50),
+    lastname VARCHAR(50),
+    email VARCHAR(50),
+    city_id INTEGER,
+    interest_id INTEGER,
+    password_hash VARCHAR(256)
+)
+RETURNS BOOLEAN
+AS $$
+DECLARE
+username_normalized VARCHAR(50) DEFAULT UPPER(username);
+email_normalized VARCHAR(50) DEFAULT UPPER(email);
+BEGIN
+    EXECUTE 
+    format 
+    (
+        '
+        INSERT INTO users(username, username_normalized, firstname, lastname, email, email_normalized, city_id, interest_id, password_hash)
+        VALUES(%L, %L, %L, %L, %L, %L, %L, %L, %L);
+        ', username, username_normalized, firstname, lastname, email, email_normalized, city_id, interest_id, password_hash
+    );
+    RETURN 't';
+END;
+$$ LANGUAGE plpgsql;
+
+/* returns the state of active session after toggle */
+CREATE FUNCTION toggle_active_session
+(
+    user_id INTEGER,
+    session_after_toggle OUT BOOLEAN
+)
+RETURNS BOOLEAN
+AS $$
+BEGIN
+    EXECUTE 
+    format
+    (
+        '
+        UPDATE users
+        SET active_session = NOT active_session
+        WHERE id = %s;
+        ', user_id
+    );
+    SELECT active_session 
+    FROM users 
+    WHERE id = $1 INTO session_after_toggle;
+END;
+$$ LANGUAGE plpgsql;
+
+
 
 
 
