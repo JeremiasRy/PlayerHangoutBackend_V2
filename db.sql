@@ -165,14 +165,12 @@ CREATE FUNCTION insert_city
 (
     name VARCHAR(50)
 )
-RETURNS integer
+RETURNS BOOLEAN
 AS $$
-DECLARE 
-result integer;
 BEGIN
     INSERT INTO cities(name)
     VALUES($1) 
-    RETURN result;
+    RETURN 't';
 END;
 $$ LANGUAGE plpgsql;
 
@@ -180,15 +178,14 @@ CREATE FUNCTION delete_city
 (
     id INTEGER
 )
-RETURNS integer
+RETURNS BOOLEAN
 AS $$
 DECLARE 
-result integer;
 BEGIN
     DELETE FROM cities
     WHERE id = $1 
     INTO result;
-    RETURN result;
+    RETURN 't';
 END;
 $$ LANGUAGE plpgsql;
 
