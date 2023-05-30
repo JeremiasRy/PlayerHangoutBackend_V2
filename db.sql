@@ -114,26 +114,84 @@ INSERT INTO roles(name) VALUES ('Standard'), ('Moderator'), ('Admin');
 /* STORED PROCEDURES */
 
 /* GET */
-
-CREATE FUNCTION get_all_cities
+CREATE FUNCTION get_by_id 
 (
-    page INTEGER,
-    page_size INTEGER,
-    name TEXT default null
+    tbl regclass,
+    id INTEGER,
+    result OUT refcursor
 )
-RETURNS refcursor
 AS $$
-DECLARE 
-ref refcursor;
 BEGIN
-    OPEN ref FOR
-    SELECT * FROM cities 
-    WHERE (1 = (CASE WHEN $3 IS NULL then 1 ELSE 0 END) OR position(UPPER($3) in name_normalized) > 0)
-    ORDER BY name
-    LIMIT $2
-    OFFSET $2 * ($1 - 1);
-    RETURN ref;
+    OPEN result FOR
+    EXECUTE format
+    (
+        '
+        SELECT * FROM %s 
+        WHERE id = %s
+        ', tbl, id
+    );
 END;
 $$ LANGUAGE plpgsql;
+
+/* Accepts name as filter */
+CREATE FUNCTION get_all
+(
+    tbl regclass,
+    page INTEGER,
+    page_size INTEGER,
+    name TEXT default null,
+    result OUT refcursor
+)
+AS $$
+DECLARE 
+offset_amount INTEGER default page_size * (page - 1);
+BEGIN
+    OPEN result FOR
+    EXECUTE 
+    format
+    (
+        '
+        SELECT * FROM %1$s
+        WHERE (1 = (CASE WHEN %4$L IS NULL THEN 1 ELSE 0 END) or position(UPPER(%4$L) in name_normalized) > 0)
+        ORDER BY name
+        LIMIT %2$s
+        OFFSET %3$s;
+        ', $1, $3, offset_amount, $4
+    );
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE FUNCTION insert_city
+(
+    name VARCHAR(50)
+)
+RETURNS integer
+AS $$
+DECLARE 
+result integer;
+BEGIN
+    INSERT INTO cities(name)
+    VALUES($1) 
+    RETURN result;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE FUNCTION delete_city
+(
+    id INTEGER
+)
+RETURNS integer
+AS $$
+DECLARE 
+result integer;
+BEGIN
+    DELETE FROM cities
+    WHERE id = $1 
+    INTO result;
+    RETURN result;
+END;
+$$ LANGUAGE plpgsql;
+
+
 
 
