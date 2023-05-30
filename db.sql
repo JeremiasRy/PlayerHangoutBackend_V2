@@ -283,6 +283,47 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+CREATE FUNCTION add_instrument_to_user
+(   
+    user_id INTEGER,
+    instrument_id INTEGER,
+    is_main BOOLEAN
+)
+RETURNS BOOLEAN
+AS $$
+BEGIN
+    EXECUTE
+    format
+    (
+        '
+        INSERT INTO user_instruments(user_id, instrument_id, is_main)
+        VALUES(%L, %L, %L);
+        ', user_id, instrument_id, is_main
+    );
+    RETURN 't';
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE FUNCTION add_role_to_user
+(
+    user_id INTEGER,
+    role_id INTEGER,
+)
+RETURNS BOOLEAN
+AS $$
+BEGIN
+    EXECUTE
+    format
+    (
+        '
+        INSERT INTO user_roles(user_id, role_id)
+        VALUES(%L, %L);
+        ', user_id, role_id
+    );
+    RETURN 't';
+END;
+$$ LANGUAGE plpgsql;
+
 
 
 
